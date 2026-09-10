@@ -67,6 +67,8 @@ private:
     bool m_apply_MOSD{false};
     bool m_limit_terrain_original{false};
     bool m_limit_terrain_temporal{false};
+    bool m_use_bc_forcing{true};
+    bool m_use_D_stress{true};
     bool m_do_original_terrain{false};
     std::string m_wall_het_model{"none"};
     amrex::Real m_monin_obukhov_length{constants::LARGE_NUM};
