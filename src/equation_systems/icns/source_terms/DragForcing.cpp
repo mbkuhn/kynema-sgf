@@ -423,6 +423,7 @@ void DragForcing::operator()(
             }
             // Default is temporal implementation
             amrex::Real CdM_m = 1.0_rt / (terrain_time_factor * dt);
+            amrex::Real CdM_m_drag = 1.0_rt / (bc_time_factor * dt);
             if (do_original_terrain != 0) {
                 const amrex::Real CdM = amrex::min<amrex::Real>(
                     Cd / (m + kynema_sgf::constants::EPS),
@@ -431,6 +432,7 @@ void DragForcing::operator()(
                 if (limit_terrain_temporal != 0) {
                     CdM_m = amrex::min<amrex::Real>(CdM_m, 1.0_rt / dt);
                 }
+                CdM_m_drag = CdM_m;
             }
 
             const amrex::Real vel_n = vel_arrs[nbx](i, j, k, n);
@@ -448,7 +450,7 @@ void DragForcing::operator()(
                 } else if (n == 1) {
                     drag_force_n = Dyz + bc_forcing_y;
                 } else {
-                    drag_force_n = CdM_m * (uz1 - target_w);
+                    drag_force_n = CdM_m_drag * (uz1 - target_w);
                 }
                 src_arrs[nbx](i, j, k, n) -=
                     drag_force_n * amrex::Math::abs(drag_arrs[nbx](i, j, k));
