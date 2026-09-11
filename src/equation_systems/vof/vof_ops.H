@@ -85,6 +85,8 @@ struct PostSolveOp<VOF>
         auto& vof = m_fields.field;
         const int nlevels = repo.num_active_levels();
 
+        constexpr amrex::Real vof_tiny = 1.0e-8_rt;
+
         // Two components used to ping-pong between sweeps so that values
         // assigned during a sweep are not used as sources within that sweep.
         // A negative value flags a cell that has not been assigned yet.
@@ -146,6 +148,12 @@ struct PostSolveOp<VOF>
                         if (cnt > 1) {
                             bf(i, j, k, dst) =
                                 sum / static_cast<amrex::Real>(cnt);
+                            // Snap to VOF bounds
+                            if (bf(i, j, k, dst) < vof_tiny) {
+                                bf(i, j, k, dst) = 0.0_rt;
+                            } else if (bf(i, j, k, dst) > 1.0_rt - vof_tiny) {
+                                bf(i, j, k, dst) = 1.0_rt;
+                            }
                             return {1};
                         }
                         bf(i, j, k, dst) = -1.0_rt;
