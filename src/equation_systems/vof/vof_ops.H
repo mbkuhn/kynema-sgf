@@ -143,7 +143,7 @@ struct PostSolveOp<VOF>
                                 }
                             }
                         }
-                        if (cnt > 0) {
+                        if (cnt > 1) {
                             bf(i, j, k, dst) =
                                 sum / static_cast<amrex::Real>(cnt);
                             return {1};
