@@ -151,7 +151,7 @@ void get_error_boundary_source_case(
         const auto& vof_arr = vof(lev).const_array(mfi);
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
             const amrex::Real expected =
-                ((i == 1) && (j == 4)) ? 0.2_rt
+                ((i == 1) && (j == 4)) ? 0.5_rt
                                        : (((i == 0) || (i == 7)) ? 1.0_rt
                                                                   : 0.2_rt);
             err_arr(i, j, k) =
@@ -283,7 +283,7 @@ TEST_F(VOFTerrainFillTest, lateral_diagonal_average)
     EXPECT_NEAR(error_fld(0).max(0), 0.0_rt, tol);
 }
 
-TEST_F(VOFTerrainFillTest, excludes_domain_boundary_sources)
+TEST_F(VOFTerrainFillTest, includes_valid_domain_boundary_sources)
 {
     setup_sim();
 

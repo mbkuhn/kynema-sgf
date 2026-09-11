@@ -3,6 +3,7 @@
 
 #include "src/equation_systems/vof/vof.H"
 #include "src/physics/multiphase/MultiPhase.H"
+#include "AMReX_MultiFabUtil.H"
 #include "AMReX_ParReduce.H"
 
 namespace kynema_sgf::pde {
@@ -97,16 +98,33 @@ struct PostSolveOp<VOF>
             const auto periodicity = m_sim.mesh().Geom(lev).periodicity();
             const auto ngrow = buf.nGrowVect();
             const auto domain = m_sim.mesh().Geom(lev).Domain();
+            amrex::iMultiFab level_mask;
+            if (lev < nlevels - 1) {
+                level_mask = amrex::makeFineMask(
+                    m_sim.mesh().boxArray(lev),
+                    m_sim.mesh().DistributionMap(lev),
+                    m_sim.mesh().boxArray(lev + 1),
+                    m_sim.mesh().refRatio(lev), 1, 0);
+            } else {
+                level_mask.define(
+                    m_sim.mesh().boxArray(lev),
+                    m_sim.mesh().DistributionMap(lev), 1, 0,
+                    amrex::MFInfo());
+                level_mask.setVal(1);
+            }
             buf.setVal(-1.0_rt);
 
             const auto blank_arrs = blanking(lev).const_arrays();
+            const auto mask_arrs = level_mask.const_arrays();
             {
                 const auto buf_arrs = buf.arrays();
                 const auto vof_arrs = vof(lev).const_arrays();
                 amrex::ParallelFor(
                     buf, amrex::IntVect(0),
                     [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) {
-                        if (blank_arrs[nbx](i, j, k) == 0) {
+                        if (mask_arrs[nbx](i, j, k) == 1 &&
+                            domain.contains(i, j, k) &&
+                            blank_arrs[nbx](i, j, k) == 0) {
                             buf_arrs[nbx](i, j, k, 0) = vof_arrs[nbx](i, j, k);
                         }
                     });
@@ -174,7 +192,9 @@ struct PostSolveOp<VOF>
                 vof(lev), amrex::IntVect(0),
                 [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) {
                     const amrex::Real val = buf_arrs[nbx](i, j, k, src);
-                    if (blank_arrs[nbx](i, j, k) == 1 && val >= 0.0_rt) {
+                    if (mask_arrs[nbx](i, j, k) == 1 &&
+                        blank_arrs[nbx](i, j, k) == 1 &&
+                        val >= 0.0_rt) {
                         vof_arrs[nbx](i, j, k) = val;
                     }
                 });
