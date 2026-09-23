@@ -29,6 +29,18 @@ void build_turbine(
     const amrex::Real yaw_init,
     const amrex::Real generator_efficiency)
 {
+    // Number of blades
+    const auto& n_blades_wio = wio["assembly"]["number_of_blades"];
+    if (n_blades_wio) {
+        AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+            n_blades == n_blades_wio.as<int>(),
+            "Number of blades in the YAML input to Kynema-FMB (" +
+                std::to_string(n_blades_wio.as<int>()) + ") does not match " +
+                "the expected number of blades from the Kynema-SGF input file "
+                "(" +
+                std::to_string(n_blades) + ").");
+    }
+
     // WindIO components
     const auto& wio_blade = wio["components"]["blade"];
     const auto& wio_tower = wio["components"]["tower"];
