@@ -354,13 +354,14 @@ void build_turbine(
 amrex::Vector<int> build_aero(
     kynema_fmb::interfaces::TurbineInterfaceBuilder& builder,
     const YAML::Node wio,
+    const int n_blades,
     const bool do_tower_aero)
 {
     //--------------------------------------------------------------------------
     // Build Aerodynamics
     //--------------------------------------------------------------------------
 
-    auto airfoil_blade_map = std::vector{0UL, 0UL, 0UL};
+    auto airfoil_blade_map = std::vector(n_blades, 0UL);
     if (do_tower_aero) {
         airfoil_blade_map.emplace_back(1UL);
     }
@@ -768,8 +769,8 @@ void ExtTurbIface<KynemaFMBTurbine, KynemaFMBSolverData>::ext_init_turbine(
         fi.rotational_speed, fi.generator_power, fi.wind_speed, fi.yaw,
         fi.generator_efficiency);
 
-    auto n_aero_sections =
-        sgf_fmb::build_aero(builder, wio, (fi.num_pts_tower != 0));
+    auto n_aero_sections = sgf_fmb::build_aero(
+        builder, wio, fi.num_blades, (fi.num_pts_tower != 0));
 
     if (n_aero_sections[0] != fi.num_pts_blade) {
         amrex::Abort(
