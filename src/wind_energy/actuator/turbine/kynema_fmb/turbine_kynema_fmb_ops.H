@@ -15,14 +15,32 @@ struct ReadInputsOp<TurbineKynemaFMB, SrcTrait>
     void
     operator()(TurbineKynemaFMB::DataType& data, const utils::ActParser& pp)
     {
+        auto& tf = data.meta().ext_data;
+        // Always need an input file
+        pp.get("kynema_fmb_input_file", tf.input_file);
+        // Get hub height and turbine diameter from turbine input,
+        // not Kynema-SGF input file
+        const YAML::Node wio = YAML::LoadFile(tf.input_file);
+        {
+            const auto& wio_blade = wio["components"]["blade"];
+            const auto& ref_axis = wio_blade["reference_axis"];
+            const auto z_values =
+                ref_axis["z"]["values"].as<std::vector<amrex::Real>>();
+            data.info().rotor_diameter = 2.0_rt * z_values[z_values.size() - 1];
+        }
+        {
+            const auto& wio_tower = wio["components"]["tower"];
+            const auto& tower_ref_axis = wio_tower["reference_axis"];
+            const auto z_values =
+                tower_ref_axis["z"]["values"].as<std::vector<amrex::Real>>();
+            data.info().hub_height = z_values[z_values.size() - 1];
+        }
+
         read_ops<TurbineKynemaFMB::DataType>(data, pp);
 
-        auto& tf = data.meta().ext_data;
-
         // Avoid using directly specified "modes"
-        // Always need an input file, will use a restart file if included
+        // Use a restart file if included
 
-        pp.get("kynema_fmb_input_file", tf.input_file);
         pp.query("kynema_fmb_restart_step", tf.checkpoint_file);
 
         std::string sim_mode = "init";
@@ -58,24 +76,6 @@ struct ReadInputsOp<TurbineKynemaFMB, SrcTrait>
         pp.query(
             "controller_shared_library_path", tf.controller_shared_lib_path);
         pp.query("controller_input_file", tf.controller_input_file);
-
-        // Get hub height and turbine diameter from turbine input,
-        // not Kynema-SGF input file
-        const YAML::Node wio = YAML::LoadFile(tf.input_file);
-        {
-            const auto& wio_blade = wio["components"]["blade"];
-            const auto& ref_axis = wio_blade["reference_axis"];
-            const auto z_values =
-                ref_axis["z"]["values"].as<std::vector<amrex::Real>>();
-            data.info().rotor_diameter = 2.0_rt * z_values[z_values.size() - 1];
-        }
-        {
-            const auto& wio_tower = wio["components"]["tower"];
-            const auto& tower_ref_axis = wio_tower["reference_axis"];
-            const auto z_values =
-                tower_ref_axis["z"]["values"].as<std::vector<amrex::Real>>();
-            data.info().hub_height = z_values[z_values.size() - 1];
-        }
 
         // Do Kynema-SGF inputs specific to kynema_fmb turbine
         tf.fluid_density = data.meta().density;
