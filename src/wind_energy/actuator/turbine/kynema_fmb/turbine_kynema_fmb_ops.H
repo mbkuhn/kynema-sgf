@@ -89,6 +89,9 @@ struct ReadInputsOp<TurbineKynemaFMB, SrcTrait>
         // Number of beam elements read in from file
         pp.get("num_struct_nodes_blade", tf.num_blade_elem);
         pp.get("num_struct_nodes_tower", tf.num_tower_elem);
+        // Section refinement for blades and tower
+        pp.query("section_ref_blade", tf.section_refinement_blade);
+        pp.query("section_ref_tower", tf.section_refinement_tower);
         // Initial or constant angular rotation speed
         pp.query("rot_speed_radps", tf.rotational_speed);
         if (!pp.contains("rot_speed_radps")) {

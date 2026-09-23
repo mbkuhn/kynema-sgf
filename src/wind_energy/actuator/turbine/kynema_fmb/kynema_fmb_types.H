@@ -258,6 +258,8 @@ struct KynemaFMBTurbine : public ext_turb::ExternalTurbine
     amrex::Real wind_speed{0.0_rt};
     amrex::Real yaw{0.0_rt};
     amrex::Real generator_efficiency{1.0_rt};
+    int section_refinement_blade{0};
+    int section_refinement_tower{2};
     int substep_counter{0};
 
     std::string controller_shared_lib_path{""};

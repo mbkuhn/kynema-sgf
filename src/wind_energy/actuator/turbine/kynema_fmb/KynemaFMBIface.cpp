@@ -23,6 +23,8 @@ void build_turbine(
     const int n_blades,
     const int n_blade_nodes,
     const int n_tower_nodes,
+    const int section_refinement_blade,
+    const int section_refinement_tower,
     const amrex::Real rotor_speed_init,
     const amrex::Real generator_power_init,
     const amrex::Real wind_speed_init,
@@ -87,7 +89,7 @@ void build_turbine(
         // Set blade parameters
         blade_builder.SetElementOrder(n_blade_nodes - 1)
             .PrescribedRootMotion(false)
-            .SetSectionRefinement(2);
+            .SetSectionRefinement(section_refinement_blade);
 
         // Add reference axis coordinates (WindIO uses Z-axis as reference axis)
         const auto ref_axis = wio_blade["reference_axis"];
@@ -202,7 +204,7 @@ void build_turbine(
     tower_builder
         .SetElementOrder(
             n_tower_nodes - 1) // Set element order to num nodes - 1
-        .SetSectionRefinement(2)
+        .SetSectionRefinement(section_refinement_tower)
         .PrescribedRootMotion(false); // Fix displacement of tower base node
 
     // Add reference axis coordinates (WindIO uses Z-axis as reference axis)
@@ -762,6 +764,7 @@ void ExtTurbIface<KynemaFMBTurbine, KynemaFMBSolverData>::ext_init_turbine(
     // Builds turbine, including blades, nacelle, and tower
     sgf_fmb::build_turbine(
         builder, wio, fi.num_blades, fi.num_blade_elem, fi.num_tower_elem,
+        fi.section_refinement_blade, fi.section_refinement_tower,
         fi.rotational_speed, fi.generator_power, fi.wind_speed, fi.yaw,
         fi.generator_efficiency);
 
