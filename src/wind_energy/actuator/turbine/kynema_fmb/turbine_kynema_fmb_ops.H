@@ -86,6 +86,9 @@ struct ReadInputsOp<TurbineKynemaFMB, SrcTrait>
             tf.dt_ext = tf.dt_cfd;
         }
 
+        // One-way coupling flag for aerodynamic loads
+        pp.query("decouple_structure_from_aero_loading", tf.one_way_coupled);
+
         // Number of beam elements read in from file
         pp.get("num_struct_nodes_blade", tf.num_blade_elem);
         pp.get("num_struct_nodes_tower", tf.num_tower_elem);

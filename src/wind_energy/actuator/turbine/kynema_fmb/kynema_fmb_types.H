@@ -159,6 +159,22 @@ struct KynemaFMBTurbine : public ext_turb::ExternalTurbine
         interface->SetHubInflow(hub_inflow);
     }
 
+    void zero_aerodynamic_loads()
+    {
+        // Zero blade and tower aero loads
+        for (int dir = 0; dir < AMREX_SPACEDIM; ++dir) {
+            for (int n = 1; n < length_force(0); ++n) {
+                interface->Aerodynamics()
+                    .bodies[body_index(n)]
+                    .loads[node_index(n)][dir] = 0.0_rt;
+            }
+        }
+        // Hub load (also called nacelle_force) does need to be passed
+        interface->Turbine().hub_node.loads[0] = 0.0_rt;
+        interface->Turbine().hub_node.loads[1] = 0.0_rt;
+        interface->Turbine().hub_node.loads[2] = 0.0_rt;
+    }
+
     /** Helper functions for navigating indices */
     int body_index(int id) const
     {
@@ -261,6 +277,7 @@ struct KynemaFMBTurbine : public ext_turb::ExternalTurbine
     int section_refinement_blade{0};
     int section_refinement_tower{2};
     int substep_counter{0};
+    bool one_way_coupled{false};
 
     std::string controller_shared_lib_path{""};
     std::string controller_input_file{""};

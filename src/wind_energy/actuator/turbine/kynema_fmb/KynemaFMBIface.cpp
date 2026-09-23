@@ -486,6 +486,9 @@ void update_turbine(::ext_turb::KynemaFMBTurbine& fi, bool advance)
         fi.pass_fluid_velocity_and_hub_load();
         fi.interface->Aerodynamics().CalculateAerodynamicLoads(
             fi.fluid_density);
+        if (fi.one_way_coupled) {
+            fi.zero_aerodynamic_loads();
+        }
         fi.interface->Aerodynamics().CalculateNodalLoads();
     }
     if (advance) {
