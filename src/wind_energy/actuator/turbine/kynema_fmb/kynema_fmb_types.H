@@ -175,6 +175,7 @@ struct KynemaFMBTurbine : public ext_turb::ExternalTurbine
                 interface->Aerodynamics()
                     .bodies[body_index(n)]
                     .loads[node_index(n)][dir] = 0.0_rt;
+                ++idx;
             }
         }
         // Hub load
