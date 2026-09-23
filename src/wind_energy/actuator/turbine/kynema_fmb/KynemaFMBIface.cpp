@@ -487,7 +487,7 @@ void update_turbine(::ext_turb::KynemaFMBTurbine& fi, bool advance)
         fi.interface->Aerodynamics().CalculateAerodynamicLoads(
             fi.fluid_density);
         if (fi.one_way_coupled) {
-            fi.zero_aerodynamic_loads();
+            fi.save_and_zero_aerodynamic_loads();
         }
         fi.interface->Aerodynamics().CalculateNodalLoads();
     }
@@ -517,7 +517,7 @@ void update_turbine(::ext_turb::KynemaFMBTurbine& fi, bool advance)
         fi.interface->WriteOutput();
         fi.interface->CloseOutputFile();
         // Populate buffers with turbine data
-        fi.populate_buffers();
+        fi.populate_buffers(fi.one_way_coupled);
     }
 }
 } // namespace sgf_fmb
