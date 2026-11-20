@@ -194,11 +194,18 @@ amrex::Real gas_velocity_error(
     return error_total;
 }
 
+//! Expected inflow-boundary velocity: target velocity where the target has
+//! liquid; in a gas-only cell directly above target liquid, the average of the
+//! gas boundary velocity and the target velocity below; elsewhere the gas
+//! velocity of the field (unmodified by the ocean-waves boundary fill)
 void make_target_velocity(
     kynema_sgf::Field& ow_velocity,
     kynema_sgf::Field& velocity,
-    kynema_sgf::Field& ow_vof)
+    kynema_sgf::Field& ow_vof,
+    const amrex::Vector<amrex::Real>& gas_vel)
 {
+    const amrex::GpuArray<amrex::Real, 3> gvel{
+        gas_vel[0], gas_vel[1], gas_vel[2]};
     for (int lev = 0; lev < ow_vof.repo().num_active_levels(); ++lev) {
         const auto& ow_vel_arrs = ow_velocity(lev).arrays();
         const auto& vel_arrs = velocity(lev).const_arrays();
@@ -209,13 +216,14 @@ void make_target_velocity(
                 if (ow_vof_arrs[nbx](i, j, k) <=
                     kynema_sgf::constants::VOF_TOL) {
                     // Gas-only cell directly above target liquid: average of
-                    // the gas velocity and the liquid velocity below (the
-                    // cell below is a liquid cell, so it is not modified here)
+                    // the gas boundary velocity (not the filled field value,
+                    // which already includes this average) and the liquid
+                    // velocity below (a liquid cell, so not modified here)
                     ow_vel_arrs[nbx](i, j, k, n) =
                         (ow_vof_arrs[nbx].contains(i, j, k - 1) &&
                          ow_vof_arrs[nbx](i, j, k - 1) >
                              kynema_sgf::constants::VOF_TOL)
-                            ? 0.5_rt * (vel_arrs[nbx](i, j, k, n) +
+                            ? 0.5_rt * (gvel[n] +
                                         ow_vel_arrs[nbx](i, j, k - 1, n))
                             : vel_arrs[nbx](i, j, k, n);
                 }
@@ -618,7 +626,7 @@ TEST_F(OceanWavesOpTest, boundary_fill)
     // Check velocity field to confirm not modified
     amrex::Real error_total = bdy_error(vof, ow_vof);
     EXPECT_NEAR(error_total, 0.0_rt, tol);
-    make_target_velocity(ow_velocity, velocity, ow_vof);
+    make_target_velocity(ow_velocity, velocity, ow_vof, gas_vel);
     error_total = bdy_error(velocity, ow_velocity);
     EXPECT_NEAR(error_total, 0.0_rt, tol);
     make_target_density(ow_vof, rho1, rho2);
@@ -700,7 +708,7 @@ TEST_F(OceanWavesOpTest, set_inflow_sibling)
     auto& ow_velocity = repo.get_field("ow_velocity");
 
     // Check velocity field to confirm not modified
-    make_target_velocity(ow_velocity, velocity, ow_vof);
+    make_target_velocity(ow_velocity, velocity, ow_vof, gas_vel);
     const amrex::Real error_total = uface_bdy_error(u_mac, ow_velocity);
     EXPECT_NEAR(error_total, 0.0_rt, tol);
 }
