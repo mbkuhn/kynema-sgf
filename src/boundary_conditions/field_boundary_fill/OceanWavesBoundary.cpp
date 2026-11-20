@@ -137,11 +137,26 @@ void OceanWavesBoundary::set_velocity(
                     ? (*m_terrain_blank_ptr)(lev).const_array(source_idx)
                     : amrex::Array4<int const>();
 
+            const amrex::IntVect below = -amrex::IntVect::TheDimensionVector(2);
             amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
                 const amrex::IntVect iv{i, j, k};
                 for (int n = 0; n < numcomp; n++) {
                     if (targ_vof(iv) > constants::VOF_TOL) {
                         arr(iv, dcomp + n) = targ_arr(iv, orig_comp + n);
+                    } else if (orig_comp + n == 2) {
+                        // Gas-only cells just above target liquid: add the
+                        // wave vertical velocity to the existing (gas) value,
+                        // fully in the first gas cell and halved in the
+                        // second, so the gas can rise with the surface;
+                        // horizontal gas velocities are left unchanged
+                        if (targ_vof(iv + below) > constants::VOF_TOL) {
+                            arr(iv, dcomp + n) += targ_arr(iv + below, 2);
+                        } else if (
+                            targ_vof.contains(i, j, k - 2) &&
+                            targ_vof(i, j, k - 2) > constants::VOF_TOL) {
+                            arr(iv, dcomp + n) +=
+                                0.5_rt * targ_arr(i, j, k - 2, 2);
+                        }
                     }
                     if (terrain_and_vof_exist) {
                         // Terrain-blanked adjacent cell means 0 velocity
