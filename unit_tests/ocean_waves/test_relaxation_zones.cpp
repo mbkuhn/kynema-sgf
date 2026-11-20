@@ -208,7 +208,16 @@ void make_target_velocity(
             [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k, int n) {
                 if (ow_vof_arrs[nbx](i, j, k) <=
                     kynema_sgf::constants::VOF_TOL) {
-                    ow_vel_arrs[nbx](i, j, k, n) = vel_arrs[nbx](i, j, k, n);
+                    // Gas-only cell directly above target liquid: average of
+                    // the gas velocity and the liquid velocity below (the
+                    // cell below is a liquid cell, so it is not modified here)
+                    ow_vel_arrs[nbx](i, j, k, n) =
+                        (ow_vof_arrs[nbx].contains(i, j, k - 1) &&
+                         ow_vof_arrs[nbx](i, j, k - 1) >
+                             kynema_sgf::constants::VOF_TOL)
+                            ? 0.5_rt * (vel_arrs[nbx](i, j, k, n) +
+                                        ow_vel_arrs[nbx](i, j, k - 1, n))
+                            : vel_arrs[nbx](i, j, k, n);
                 }
             });
     }

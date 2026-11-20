@@ -137,11 +137,19 @@ void OceanWavesBoundary::set_velocity(
                     ? (*m_terrain_blank_ptr)(lev).const_array(source_idx)
                     : amrex::Array4<int const>();
 
+            const amrex::IntVect below = -amrex::IntVect::TheDimensionVector(2);
             amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
                 const amrex::IntVect iv{i, j, k};
                 for (int n = 0; n < numcomp; n++) {
                     if (targ_vof(iv) > constants::VOF_TOL) {
                         arr(iv, dcomp + n) = targ_arr(iv, orig_comp + n);
+                    } else if (targ_vof(iv + below) > constants::VOF_TOL) {
+                        // Gas-only cell directly above target liquid: average
+                        // the existing (gas) velocity with the liquid velocity
+                        // below to soften the switch-on at the interface
+                        arr(iv, dcomp + n) =
+                            0.5_rt * (arr(iv, dcomp + n) +
+                                      targ_arr(iv + below, orig_comp + n));
                     }
                     if (terrain_and_vof_exist) {
                         // Terrain-blanked adjacent cell means 0 velocity
@@ -323,9 +331,18 @@ void OceanWavesBoundary::set_inflow_sibling_velocity(
                             const int i, const int j, const int k) {
                         amrex::IntVect cc_iv = {i, j, k};
                         cc_iv += shift_to_cc;
+                        const amrex::IntVect cc_below =
+                            cc_iv - amrex::IntVect::TheDimensionVector(2);
 
                         if (targ_vof(cc_iv) > constants::VOF_TOL) {
                             marr(i, j, k, 0) = targ_arr(cc_iv, fdir);
+                        } else if (targ_vof(cc_below) > constants::VOF_TOL) {
+                            // Gas-only cell directly above target liquid:
+                            // average the existing (gas) face velocity with
+                            // the liquid velocity below
+                            marr(i, j, k, 0) =
+                                0.5_rt *
+                                (marr(i, j, k, 0) + targ_arr(cc_below, fdir));
                         }
                         if (terrain_and_vof_exist) {
                             // Terrain-blanked boundary-adjacent cell should set
