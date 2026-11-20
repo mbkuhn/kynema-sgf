@@ -144,12 +144,24 @@ void OceanWavesBoundary::set_velocity(
                     if (targ_vof(iv) > constants::VOF_TOL) {
                         arr(iv, dcomp + n) = targ_arr(iv, orig_comp + n);
                     } else if (targ_vof(iv + below) > constants::VOF_TOL) {
-                        // Gas-only cell directly above target liquid: average
-                        // the existing (gas) velocity with the liquid velocity
-                        // below to soften the switch-on at the interface
-                        arr(iv, dcomp + n) =
-                            0.5_rt * (arr(iv, dcomp + n) +
-                                      targ_arr(iv + below, orig_comp + n));
+                        // Gas-only cell directly above target liquid:
+                        // horizontal components average the existing (gas)
+                        // velocity with the liquid velocity below; the
+                        // vertical component adds the liquid vertical velocity
+                        // below to the existing value
+                        if (orig_comp + n == 2) {
+                            arr(iv, dcomp + n) += targ_arr(iv + below, 2);
+                        } else {
+                            arr(iv, dcomp + n) =
+                                0.5_rt * (arr(iv, dcomp + n) +
+                                          targ_arr(iv + below, orig_comp + n));
+                        }
+                    } else if (
+                        orig_comp + n == 2 && targ_vof.contains(i, j, k - 2) &&
+                        targ_vof(i, j, k - 2) > constants::VOF_TOL) {
+                        // Second gas cell above target liquid: add half of the
+                        // liquid vertical velocity two cells below
+                        arr(iv, dcomp + n) += 0.5_rt * targ_arr(i, j, k - 2, 2);
                     }
                     if (terrain_and_vof_exist) {
                         // Terrain-blanked adjacent cell means 0 velocity

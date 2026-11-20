@@ -195,37 +195,45 @@ amrex::Real gas_velocity_error(
 }
 
 //! Expected inflow-boundary velocity: target velocity where the target has
-//! liquid; in a gas-only cell directly above target liquid, the average of the
-//! gas boundary velocity and the target velocity below; elsewhere the gas
-//! velocity of the field (unmodified by the ocean-waves boundary fill)
+//! liquid; in the first gas cell above target liquid, horizontal components
+//! average the gas boundary velocity with the target velocity below and the
+//! vertical component adds the target vertical velocity below to the gas value;
+//! in the second gas cell, the vertical component adds half of the target
+//! vertical velocity two cells below; gas velocity elsewhere. gas_vel is the gas
+//! boundary velocity (the filled field already includes these modifications).
 void make_target_velocity(
     kynema_sgf::Field& ow_velocity,
     kynema_sgf::Field& velocity,
     kynema_sgf::Field& ow_vof,
     const amrex::Vector<amrex::Real>& gas_vel)
 {
+    constexpr amrex::Real tol = kynema_sgf::constants::VOF_TOL;
     const amrex::GpuArray<amrex::Real, 3> gvel{
         gas_vel[0], gas_vel[1], gas_vel[2]};
     for (int lev = 0; lev < ow_vof.repo().num_active_levels(); ++lev) {
         const auto& ow_vel_arrs = ow_velocity(lev).arrays();
         const auto& vel_arrs = velocity(lev).const_arrays();
         const auto& ow_vof_arrs = ow_vof(lev).const_arrays();
+        // Only gas cells are modified; they read liquid-cell targets only
         amrex::ParallelFor(
             ow_vof(lev), amrex::IntVect(2), velocity.num_comp(),
             [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k, int n) {
-                if (ow_vof_arrs[nbx](i, j, k) <=
-                    kynema_sgf::constants::VOF_TOL) {
-                    // Gas-only cell directly above target liquid: average of
-                    // the gas boundary velocity (not the filled field value,
-                    // which already includes this average) and the liquid
-                    // velocity below (a liquid cell, so not modified here)
-                    ow_vel_arrs[nbx](i, j, k, n) =
-                        (ow_vof_arrs[nbx].contains(i, j, k - 1) &&
-                         ow_vof_arrs[nbx](i, j, k - 1) >
-                             kynema_sgf::constants::VOF_TOL)
-                            ? 0.5_rt * (gvel[n] +
-                                        ow_vel_arrs[nbx](i, j, k - 1, n))
-                            : vel_arrs[nbx](i, j, k, n);
+                const auto f = ow_vof_arrs[nbx];
+                if (f(i, j, k) > tol) {
+                    return;
+                }
+                const auto v = ow_vel_arrs[nbx];
+                const bool first = f.contains(i, j, k - 1) && f(i, j, k - 1) > tol;
+                const bool second =
+                    !first && f.contains(i, j, k - 2) && f(i, j, k - 2) > tol;
+                if (first) {
+                    v(i, j, k, n) = (n == 2)
+                                        ? gvel[n] + v(i, j, k - 1, n)
+                                        : 0.5_rt * (gvel[n] + v(i, j, k - 1, n));
+                } else if (second && n == 2) {
+                    v(i, j, k, n) = gvel[n] + (0.5_rt * v(i, j, k - 2, n));
+                } else {
+                    v(i, j, k, n) = vel_arrs[nbx](i, j, k, n);
                 }
             });
     }
@@ -627,7 +635,7 @@ TEST_F(OceanWavesOpTest, boundary_fill)
     amrex::Real error_total = bdy_error(vof, ow_vof);
     EXPECT_NEAR(error_total, 0.0_rt, tol);
     make_target_velocity(ow_velocity, velocity, ow_vof, gas_vel);
-    error_total = bdy_error(velocity, ow_velocity);
+    error_total = bdy_error(velocity, ow_velocity, AMREX_SPACEDIM);
     EXPECT_NEAR(error_total, 0.0_rt, tol);
     make_target_density(ow_vof, rho1, rho2);
     error_total = bdy_error(density, ow_vof);
