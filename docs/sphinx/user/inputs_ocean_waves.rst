@@ -5,12 +5,15 @@ Section: Ocean Waves
 
 This section is for setting up wave forcing and relaxation zones.
 
-For every wave type, the target velocity (``ow_velocity``) is the liquid velocity. In partially
-filled cells, the wave velocity is evaluated at the approximate vertical position of the liquid centroid,
-``z_bottom + 0.5 * vof * dz``, by interpolating between the cell-centered values of the current
-cell and the cell below. This centroid never lies above the cell center, so the result is always an
-interpolation and reduces the overestimate of evaluating wave kinematics at cell centers above the
-free surface. The same treatment is used for the initial velocity field in multiphase simulations.
+For every wave type, the target velocity (``ow_velocity``) is the liquid velocity, evaluated at the
+approximate vertical position of the liquid centroid in cells near the free surface. For ``LinearWaves``
+and ``StokesWaves``, the free-surface elevation ``eta`` is known at each cell's horizontal position, so the
+wave kinematics are evaluated directly at ``0.5 * (z_bottom + min(max(eta, z_bottom), z_top))``, the
+midpoint of the liquid column under a locally horizontal surface. This is the cell center for full cells
+and never lies above the free surface, so the kinematics are not extrapolated above the surface. The same
+treatment is used for the initial velocity field in multiphase simulations. For ``W2AWaves``, whose
+velocities are reconstructed at cell centers, partially filled cells are instead interpolated between the
+cell-centered values of the current cell and the cell below to ``z_bottom + 0.5 * vof * dz``.
 
 .. input_param:: OceanWaves.label
 
