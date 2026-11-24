@@ -114,6 +114,22 @@ cell-centered values of the current cell and the cell below to ``z_bottom + 0.5 
 
 The following input arguments are only valid for the LinearWaves and StokesWave wave types:
 
+.. input_param:: OceanWaves.label.zero_mass_transport
+
+   **type:** Boolean, optional, default = false
+
+   For LinearWaves and StokesWaves. By default, the wave kinematics are those for zero
+   mean Eulerian current (Stokes' first approximation to the wave speed), so the waves
+   carry a net mass transport in the direction of propagation, and wave generation adds
+   water to the domain. In a closed tank this mass has to leave through the outlet or
+   accumulate, which raises the mean water level ahead of the numerical beach. When
+   true, a uniform return current is added that cancels the mass transport (no
+   depth-averaged mass transport, Stokes' second approximation; Fenton 1990, Eqs. 1,
+   2, 7, and 10), as in a closed physical wave flume. The current is applied to the
+   fluid velocity and to the wave speed, so for a specified ``wave_period`` the
+   wavelength is computed accordingly; the numerical beach still relaxes to still water.
+   Comparisons with theory or experiments should use the same definition.
+
 .. input_param:: OceanWaves.label.wave_length
 
    **type:** Real, mandatory

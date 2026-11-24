@@ -39,6 +39,7 @@ struct ReadInputsOp<StokesWaves>
         // Get wave attributes
         pp.get("wave_height", wdata.wave_height);
         pp.get("order", wdata.order);
+        pp.query("zero_mass_transport", wdata.zero_mass_transport);
         if (pp.contains("wave_length")) {
             pp.get("wave_length", wdata.wave_length);
         } else {
@@ -55,9 +56,14 @@ struct ReadInputsOp<StokesWaves>
             int itmax_lambda = 40;
             pp.query("stokes_wavelength_tolerance", tol_lambda);
             pp.query("stokes_wavelength_iter_max", itmax_lambda);
-            wdata.wave_length = relaxation_zones::stokes_wave_length(
-                wave_period, wdata.water_depth, wdata.wave_height, order_lambda,
-                wdata.g, tol_lambda, itmax_lambda);
+            wdata.wave_length =
+                wdata.zero_mass_transport
+                    ? relaxation_zones::stokes_wave_length_zero_mass_transport(
+                          wave_period, wdata.water_depth, wdata.wave_height,
+                          order_lambda, wdata.g, tol_lambda, itmax_lambda)
+                    : relaxation_zones::stokes_wave_length(
+                          wave_period, wdata.water_depth, wdata.wave_height,
+                          order_lambda, wdata.g, tol_lambda, itmax_lambda);
             // Abort if wave length is negative
             if (wdata.wave_length < 0.0_rt) {
                 if (wdata.wave_length == -1) {
@@ -77,6 +83,15 @@ struct ReadInputsOp<StokesWaves>
                 amrex::Print() << "Stokes wave length calculated to be "
                                << wdata.wave_length << " m.\n";
             }
+        }
+        if (wdata.zero_mass_transport) {
+            wdata.mean_current =
+                relaxation_zones::stokes_zero_mass_transport_current(
+                    wdata.order, wdata.wave_length, wdata.water_depth,
+                    wdata.wave_height, wdata.g);
+            amrex::Print() << "Stokes waves without mass transport: Eulerian "
+                              "mean current "
+                           << wdata.mean_current << " m/s.\n";
         }
         pp.query("wave_phase_offset_radians", wdata.wave_phase_offset);
         if (!pp.contains("wave_phase_offset_radians")) {
@@ -126,6 +141,7 @@ struct InitDataOp<StokesWaves>
         const amrex::Real beach_length = wdata.beach_length;
         const amrex::Real g = wdata.g;
         const int order = wdata.order;
+        const amrex::Real mean_current = wdata.mean_current;
         const bool has_beach = wdata.has_beach && multiphase_mode;
         const bool init_wave_field = wdata.init_wave_field || !multiphase_mode;
 
@@ -142,7 +158,7 @@ struct InitDataOp<StokesWaves>
                     order, wave_length, water_depth, wave_height,
                     zero_sea_level, g, x, z, 0.0_rt, phase_offset,
                     constants::LOW_NUM, constants::LARGE_NUM, eta_w, u_w, v_w,
-                    w_w);
+                    w_w, mean_current);
                 const utils::WaveVec wave_sol{u_w, v_w, w_w, eta_w};
 
                 // Quiescent profile
@@ -167,13 +183,14 @@ struct InitDataOp<StokesWaves>
                         const amrex::Real z_liq = utils::liquid_centroid_z(
                             local_profile[3], z, dx[2]);
                         if (z_liq != z) {
-                            amrex::Real eta_c{0.0_rt}, u_c{0.0_rt},
-                                v_c{0.0_rt}, w_c{0.0_rt};
+                            amrex::Real eta_c{0.0_rt}, u_c{0.0_rt}, v_c{0.0_rt},
+                                w_c{0.0_rt};
                             relaxation_zones::stokes_waves(
                                 order, wave_length, water_depth, wave_height,
                                 zero_sea_level, g, x, z_liq, 0.0_rt,
                                 phase_offset, constants::LOW_NUM,
-                                constants::LARGE_NUM, eta_c, u_c, v_c, w_c);
+                                constants::LARGE_NUM, eta_c, u_c, v_c, w_c,
+                                mean_current);
                             const utils::WaveVec wave_sol_c{
                                 u_c, v_c, w_c, eta_c};
                             const auto bulk_c =
@@ -226,6 +243,7 @@ struct UpdateTargetFieldsOp<StokesWaves>
             const amrex::Real zero_sea_level = wdata.zsl;
             const amrex::Real g = wdata.g;
             const int order = wdata.order;
+            const amrex::Real mean_current = wdata.mean_current;
 
             amrex::ParallelFor(
                 ow_velocity(lev), amrex::IntVect(3),
@@ -241,7 +259,7 @@ struct UpdateTargetFieldsOp<StokesWaves>
                         order, wave_length, water_depth, wave_height,
                         zero_sea_level, g, x, z, time, phase_offset,
                         constants::LOW_NUM, constants::LARGE_NUM, eta, u_w, v_w,
-                        w_w);
+                        w_w, mean_current);
 
                     phi[nbx](i, j, k) = eta - z;
                     const amrex::Real cell_length_2D =
@@ -255,9 +273,9 @@ struct UpdateTargetFieldsOp<StokesWaves>
                             amrex::Real eta_c{0.0_rt};
                             relaxation_zones::stokes_waves(
                                 order, wave_length, water_depth, wave_height,
-                                zero_sea_level, g, x, z_liq, time,
-                                phase_offset, constants::LOW_NUM,
-                                constants::LARGE_NUM, eta_c, u_w, v_w, w_w);
+                                zero_sea_level, g, x, z_liq, time, phase_offset,
+                                constants::LOW_NUM, constants::LARGE_NUM, eta_c,
+                                u_w, v_w, w_w, mean_current);
                         }
                         // Wave velocity within a cell of interface
                         vel[nbx](i, j, k, 0) = u_w;
