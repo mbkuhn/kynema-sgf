@@ -305,9 +305,9 @@ TEST_F(MFluxSchemeTest, minmod)
                        kynema_sgf::utils::powi(ir - 1.0_rt, 2)) /
                       dx;
     amrex::Real val_p =
-        kynema_sgf::utils::powi(ir, 2) - (slp * 0.5_rt * (dt * adv_vel - dx));
+        kynema_sgf::utils::powi(ir, 2) - (slp * 0.5_rt * ((dt * adv_vel) - dx));
     amrex::Real val_n =
-        kynema_sgf::utils::powi(ir, 2) + (slp * 0.5_rt * (dt * adv_vel - dx));
+        kynema_sgf::utils::powi(ir, 2) + (slp * 0.5_rt * ((dt * adv_vel) - dx));
     // Set up field (x)
     init_scalar_increasing(sc, 0);
     // Compute interpolated quantities at each face
@@ -378,9 +378,9 @@ TEST_F(MFluxSchemeTest, minmodbdy)
         amrex::Real dx = sc.repo().mesh().Geom(0).CellSizeArray()[0];
         amrex::Real slp = (kynema_sgf::utils::powi(ir, 2) -
                            kynema_sgf::utils::powi(ir - 1.0_rt, 2)) /
-                          dx;
+                          (0.5_rt * dx);
         amrex::Real val_n = kynema_sgf::utils::powi(ir, 2) +
-                            (slp * 0.5_rt * (dt * adv_vel - dx));
+                            (slp * 0.5_rt * ((dt * adv_vel) - dx));
         // Set up field
         init_scalar_increasing(sc, 0);
         // Compute interpolated quantities at each face
@@ -398,9 +398,9 @@ TEST_F(MFluxSchemeTest, minmodbdy)
         amrex::Real dx = sc.repo().mesh().Geom(0).CellSizeArray()[0];
         amrex::Real slp = (kynema_sgf::utils::powi(ir + 1.0_rt, 2) -
                            kynema_sgf::utils::powi(ir, 2)) /
-                          dx;
+                          (0.5_rt * dx);
         amrex::Real val_p = kynema_sgf::utils::powi(ir, 2) -
-                            (slp * 0.5_rt * (dt * adv_vel - dx));
+                            (slp * 0.5_rt * ((dt * adv_vel) - dx));
         // Set up field
         init_scalar_increasing(sc, 1);
         // Compute interpolated quantities at each face

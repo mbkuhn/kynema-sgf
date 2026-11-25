@@ -56,7 +56,11 @@ ModulatedPowerLaw::ModulatedPowerLaw(CFDSim& sim)
     pp_abl.getarr("temperature_heights", m_theta_heights);
     pp_abl.getarr("temperature_values", m_theta_values);
 
-    AMREX_ALWAYS_ASSERT(m_theta_heights.size() == m_theta_values.size());
+    AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+        m_theta_heights.size() == m_theta_values.size(),
+        "m_theta_heights.size() = " + std::to_string(m_theta_heights.size()) +
+            ", m_theta_values.size() = " +
+            std::to_string(m_theta_values.size()));
     int num_theta_values = static_cast<int>(m_theta_heights.size());
     m_thht_d.resize(num_theta_values);
     m_thvv_d.resize(num_theta_values);
@@ -107,6 +111,14 @@ void ModulatedPowerLaw::pre_advance_work()
 
 void ModulatedPowerLaw::post_advance_work() {}
 
+bool ModulatedPowerLaw::provides_inflow_values(
+    const Field& field, const amrex::Orientation ori) const
+{
+    const auto bct = field.bc_type()[ori];
+    return (field.name() == "velocity" || field.name() == "temperature") &&
+           (bct == BC::mass_inflow || bct == BC::mass_inflow_outflow);
+}
+
 void ModulatedPowerLaw::set_velocity(
     const int lev,
     const amrex::Real /*time*/,
@@ -149,12 +161,12 @@ void ModulatedPowerLaw::set_velocity(
     const amrex::Real num2 = vmax * (height - z2);
     const amrex::Real denom =
         0.5_rt *
-        (std::log(std::cosh(-smear_coeff * (height - zc))) / smear_coeff -
-         std::log(std::cosh(-smear_coeff * (z2 - zc))) / smear_coeff +
+        ((std::log(std::cosh(-smear_coeff * (height - zc))) / smear_coeff) -
+         (std::log(std::cosh(-smear_coeff * (z2 - zc))) / smear_coeff) +
          (height - z2));
 
     const amrex::Real upper_coeff =
-        (bulk_velocity * height - num1 - num2) / denom;
+        ((bulk_velocity * height) - num1 - num2) / denom;
 
     const auto& bctype = fld.bc_type();
     const int nghost = 1;
@@ -205,7 +217,10 @@ void ModulatedPowerLaw::set_velocity(
                     arr(i, j, k, dcomp + n) = vels[orig_comp + n];
                 }
             });
+            utils::extend_boundary_ghost_layers(bx, arr, ori, dcomp, numcomp);
         }
+        utils::fill_transverse_ghosts(
+            mfab, geom, fld.bcrec(), ori, dcomp, mfab.nComp(), orig_comp);
     }
 }
 
@@ -281,7 +296,9 @@ void ModulatedPowerLaw::set_temperature(
                                                       theta_gauss_var, engine);
                     }
                 });
+            utils::extend_boundary_ghost_layers(bx, arr, ori, 0, 1);
         }
+        utils::fill_transverse_ghosts(mfab, geom, fld.bcrec(), ori, 0, 1);
     }
 }
 

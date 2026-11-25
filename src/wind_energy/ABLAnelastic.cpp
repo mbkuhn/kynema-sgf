@@ -67,9 +67,21 @@ void ABLAnelastic::initialize_data()
     m_pressure.resize(m_axis, m_sim.mesh().Geom());
     m_theta.resize(m_axis, m_sim.mesh().Geom());
 
-    AMREX_ALWAYS_ASSERT(m_sim.repo().num_active_levels() == m_density.size());
-    AMREX_ALWAYS_ASSERT(m_sim.repo().num_active_levels() == m_pressure.size());
-    AMREX_ALWAYS_ASSERT(m_sim.repo().num_active_levels() == m_theta.size());
+    AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+        m_sim.repo().num_active_levels() == m_density.size(),
+        "num_active_levels() = " +
+            std::to_string(m_sim.repo().num_active_levels()) +
+            ", m_density.size() = " + std::to_string(m_density.size()));
+    AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+        m_sim.repo().num_active_levels() == m_pressure.size(),
+        "num_active_levels() = " +
+            std::to_string(m_sim.repo().num_active_levels()) +
+            ", m_pressure.size() = " + std::to_string(m_pressure.size()));
+    AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+        m_sim.repo().num_active_levels() == m_theta.size(),
+        "num_active_levels() = " +
+            std::to_string(m_sim.repo().num_active_levels()) +
+            ", m_theta.size() = " + std::to_string(m_theta.size()));
 
     initialize_isentropic_hse();
 
@@ -122,7 +134,7 @@ void ABLAnelastic::initialize_isentropic_hse()
             const amrex::Real p_diff = p_hse - p_eos;
             const amrex::Real dpdr = eos.dp_constanttheta(dens[0], ref_theta);
             const amrex::Real ddens =
-                p_diff / (dpdr - half_dx * m_gravity[m_axis]);
+                p_diff / (dpdr - (half_dx * m_gravity[m_axis]));
 
             dens[0] = dens[0] + ddens;
             pres[0] = eos.p_rth(dens[0], ref_theta);
@@ -152,7 +164,7 @@ void ABLAnelastic::initialize_isentropic_hse()
                 const amrex::Real dpdr =
                     eos.dp_constanttheta(dens[k], ref_theta);
                 const amrex::Real ddens =
-                    p_diff / (dpdr - dx * m_gravity[m_axis]);
+                    p_diff / (dpdr - (dx * m_gravity[m_axis]));
 
                 dens[k] = dens[k] + ddens;
                 pres[k] = eos.p_rth(dens[k], ref_theta);

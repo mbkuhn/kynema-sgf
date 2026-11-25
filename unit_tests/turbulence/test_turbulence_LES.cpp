@@ -338,6 +338,25 @@ TEST_F(TurbLESTest, test_1eqKsgs_setup_calc)
         std::sqrt(tke_val);
     EXPECT_NEAR(min_val, ksgs_answer, tol);
     EXPECT_NEAR(max_val, ksgs_answer, tol);
+
+    // Production terms are per unit mass, like the dissipation in KsgsM84Src,
+    // because the TKE equation multiplies the whole source by density.
+    // nu_t = mu_t / rho, S = srate, N^2 = g dT/dz / Tref (stable here).
+    const amrex::Real ds = std::cbrt(m_dx * m_dy * m_dz);
+    const amrex::Real nsq = Tgz * gravz / Tref;
+    const amrex::Real lsgs =
+        amrex::min<amrex::Real>(ds, 0.76_rt * std::sqrt(tke_val / nsq));
+    const amrex::Real nut = ksgs_answer / rho0;
+    const amrex::Real shear_answer = srate * srate * nut;
+    const amrex::Real buoy_answer =
+        -nut * (1.0_rt + (2.0_rt * lsgs / ds)) * nsq;
+    const auto& shear_prod = sim().repo().get_field("shear_prod");
+    const auto& buoy_prod = sim().repo().get_field("buoy_prod");
+    const amrex::Real ptol = tol * srate * srate;
+    EXPECT_NEAR(utils::field_min(shear_prod), shear_answer, ptol);
+    EXPECT_NEAR(utils::field_max(shear_prod), shear_answer, ptol);
+    EXPECT_NEAR(utils::field_min(buoy_prod), buoy_answer, tol);
+    EXPECT_NEAR(utils::field_max(buoy_prod), buoy_answer, tol);
 }
 
 TEST_F(TurbLESTest, test_AMD_setup_calc)
@@ -427,7 +446,7 @@ TEST_F(TurbLESTest, test_AMD_setup_calc)
     const amrex::Real amd_answer =
         C *
         (-1.0_rt * kynema_sgf::utils::powi(scale / std::sqrt(6.0_rt), 3) *
-         (m_dx * m_dx - 8.0_rt * m_dy * m_dy - m_dz * m_dz)) /
+         ((m_dx * m_dx) - (8.0_rt * m_dy * m_dy) - (m_dz * m_dz))) /
         (1.0_rt * scale * scale);
     EXPECT_NEAR(min_val, amd_answer, tol);
     EXPECT_NEAR(max_val, amd_answer, tol);
@@ -507,7 +526,7 @@ TEST_F(TurbLESTest, test_AMDNoTherm_setup_calc)
 
     const amrex::Real amd_answer =
         -C * kynema_sgf::utils::powi(scale, 3) *
-        (m_dx * m_dx - 8.0_rt * m_dy * m_dy + m_dz * m_dz) /
+        ((m_dx * m_dx) - (8.0_rt * m_dy * m_dy) + (m_dz * m_dz)) /
         (6 * scale * scale);
     EXPECT_NEAR(min_val, amd_answer, tol);
     EXPECT_NEAR(max_val, amd_answer, tol);

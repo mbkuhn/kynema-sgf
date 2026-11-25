@@ -22,7 +22,10 @@ FPlaneAveraging<FType>::FPlaneAveraging(
     , m_max_level(max_level)
     , m_comp_deriv(compute_deriv)
 {
-    AMREX_ALWAYS_ASSERT(m_axis >= 0 && m_axis < AMREX_SPACEDIM);
+    AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+        m_axis >= 0 && m_axis < AMREX_SPACEDIM,
+        "m_axis = " + std::to_string(m_axis) +
+            ", AMREX_SPACEDIM = " + std::to_string(AMREX_SPACEDIM));
     const auto& mesh = m_field.repo().mesh();
     auto geom = mesh.Geom();
 
@@ -40,12 +43,15 @@ FPlaneAveraging<FType>::FPlaneAveraging(
     const int dom_lo = dom_lo_vec[m_axis];
     const int dom_hi = dom_hi_vec[m_axis];
 
-    AMREX_ALWAYS_ASSERT(dom_lo == 0);
+    AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+        dom_lo == 0, "dom_lo = " + std::to_string(dom_lo));
     int dom_hi2 = geom[0].Domain().bigEnd()[m_axis] + 1;
     for (int i = 0; i < finestLevel; ++i) {
         dom_hi2 *= mesh.refRatio(i)[m_axis];
     }
-    AMREX_ALWAYS_ASSERT(dom_hi + 1 == dom_hi2);
+    AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+        dom_hi + 1 == dom_hi2, "dom_hi = " + std::to_string(dom_hi) +
+                                   ", dom_hi2 = " + std::to_string(dom_hi2));
 
     // TODO: make an input maybe?
     m_ncell_line = dom_hi - dom_lo + 1;
@@ -81,9 +87,9 @@ void FPlaneAveraging<FType>::convert_x_to_ind(
     c = 0.0_rt;
     ind = 0;
 
-    if (x > m_xlo + 0.5_rt * m_dx) {
-        ind = static_cast<int>(std::floor((x - m_xlo) / m_dx - 0.5_rt));
-        const amrex::Real x1 = m_xlo + (ind + 0.5_rt) * m_dx;
+    if (x > m_xlo + (0.5_rt * m_dx)) {
+        ind = static_cast<int>(std::floor(((x - m_xlo) / m_dx) - 0.5_rt));
+        const amrex::Real x1 = m_xlo + ((ind + 0.5_rt) * m_dx);
         c = (x - x1) / m_dx;
     }
 
@@ -92,7 +98,10 @@ void FPlaneAveraging<FType>::convert_x_to_ind(
         c = 1.0_rt;
     }
 
-    AMREX_ALWAYS_ASSERT(ind >= 0 && ind + 1 < m_ncell_line);
+    AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+        ind >= 0 && ind + 1 < m_ncell_line,
+        "ind = " + std::to_string(ind) +
+            ", m_ncell_line = " + std::to_string(m_ncell_line));
 }
 
 template <typename FType>
@@ -153,7 +162,10 @@ FPlaneAveraging<FType>::line_average_interpolated(amrex::Real x, int comp) const
 
     BL_PROFILE("kynema-sgf::PlaneAveraging::line_average_interpolated");
 
-    AMREX_ALWAYS_ASSERT(comp >= 0 && comp < m_ncomp);
+    AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+        comp >= 0 && comp < m_ncomp,
+        "comp = " + std::to_string(comp) +
+            ", m_ncomp = " + std::to_string(m_ncomp));
 
     int ind;
     amrex::Real c;
@@ -169,7 +181,10 @@ void FPlaneAveraging<FType>::line_average(
 {
     BL_PROFILE("kynema-sgf::PlaneAveraging::line_average");
 
-    AMREX_ALWAYS_ASSERT(comp >= 0 && comp < m_ncomp);
+    AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+        comp >= 0 && comp < m_ncomp,
+        "comp = " + std::to_string(comp) +
+            ", m_ncomp = " + std::to_string(m_ncomp));
 
     for (int i = 0; i < m_ncell_line; i++) {
         l_vec[i] = m_line_average[(m_ncomp * i) + comp];
@@ -181,8 +196,14 @@ amrex::Real FPlaneAveraging<FType>::line_average_cell(int ind, int comp) const
 {
     BL_PROFILE("kynema-sgf::PlaneAveraging::line_average_cell");
 
-    AMREX_ALWAYS_ASSERT(comp >= 0 && comp < m_ncomp);
-    AMREX_ALWAYS_ASSERT(ind >= 0 && ind < m_ncell_line);
+    AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+        comp >= 0 && comp < m_ncomp,
+        "comp = " + std::to_string(comp) +
+            ", m_ncomp = " + std::to_string(m_ncomp));
+    AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+        ind >= 0 && ind < m_ncell_line,
+        "ind = " + std::to_string(ind) +
+            ", m_ncell_line = " + std::to_string(m_ncell_line));
 
     return m_line_average[(m_ncomp * ind) + comp];
 }
@@ -194,7 +215,7 @@ void FPlaneAveraging<FType>::operator()()
 
     m_last_updated_index = m_time.time_index();
 
-    std::fill(m_line_average.begin(), m_line_average.end(), 0.0_rt);
+    std::ranges::fill(m_line_average, 0.0_rt);
 
     switch (m_axis) {
     case 0:
@@ -258,7 +279,8 @@ void FPlaneAveraging<FType>::compute_averages(const IndexSelector& idxOp)
         const amrex::Real dz = geom.CellSize()[idxOp.odir2];
 
         const amrex::Real problo_x = geom.ProbLo(dir);
-        const amrex::Real probhi_x = geom.ProbHi(dir);
+        const int dom_lo = geom.Domain().smallEnd(dir);
+        const int dom_hi = geom.Domain().bigEnd(dir);
 
         amrex::iMultiFab level_mask;
         if (lev < finestLevel) {
@@ -307,7 +329,7 @@ void FPlaneAveraging<FType>::compute_averages(const IndexSelector& idxOp)
 
                                 // cell coordinates
                                 const amrex::Real cell_xlo =
-                                    xlo + idxOp(i, j, k) * dx;
+                                    xlo + (idxOp(i, j, k) * dx);
                                 const amrex::Real cell_xhi = cell_xlo + dx;
 
                                 // line indices
@@ -337,7 +359,7 @@ void FPlaneAveraging<FType>::compute_averages(const IndexSelector& idxOp)
 
                                     // line coordinates
                                     const amrex::Real line_xlo =
-                                        xlo + ind * line_dx;
+                                        xlo + (ind * line_dx);
                                     const amrex::Real line_xhi =
                                         line_xlo + line_dx;
 
@@ -361,23 +383,35 @@ void FPlaneAveraging<FType>::compute_averages(const IndexSelector& idxOp)
                                     const auto idx = iv[dir];
                                     const auto x_cell =
                                         problo_x +
-                                        (static_cast<amrex::Real>(idx) +
-                                         0.5_rt) *
-                                            dx;
+                                        ((static_cast<amrex::Real>(idx) +
+                                          0.5_rt) *
+                                         dx);
                                     // Get location of neighboring cell centers
-                                    auto x_up = x_cell + dx;
-                                    auto x_down = x_cell - dx;
-                                    // Bound locations by domain limits
+                                    const auto x_up = x_cell + dx;
+                                    const auto x_down = x_cell - dx;
+                                    // Pick the closest neighbor. Across a
+                                    // non-periodic domain boundary the ghost
+                                    // cell is not used: what it holds depends
+                                    // on the boundary condition (a value at
+                                    // the face, an extrapolation to the ghost
+                                    // center, a gradient for wall models) and
+                                    // on whether it has been filled at all,
+                                    // so the interior neighbor is used
+                                    // instead. Indices are also bounded in
+                                    // case of no ghost cells.
+                                    bool use_up = std::abs(x_up - x_targ) <
+                                                  std::abs(x_down - x_targ);
                                     if (!periodic_dir) {
-                                        x_up = amrex::min(probhi_x, x_up);
-                                        x_down = amrex::max(problo_x, x_down);
+                                        if (use_up && (idx + 1 > dom_hi)) {
+                                            use_up = false;
+                                        } else if (
+                                            !use_up && (idx - 1 < dom_lo)) {
+                                            use_up = true;
+                                        }
                                     }
-                                    // Pick indices of closest neighbor
-                                    // Bound indices in case of no ghost cells
                                     auto iv_nb = iv;
                                     auto x_nb = x_cell;
-                                    if (std::abs(x_up - x_targ) <
-                                        std::abs(x_down - x_targ)) {
+                                    if (use_up) {
                                         x_nb = x_up;
                                         iv_nb[dir] += 1;
                                         if (no_ghost) {
@@ -392,6 +426,12 @@ void FPlaneAveraging<FType>::compute_averages(const IndexSelector& idxOp)
                                                 iv_nb[dir], vbx.smallEnd(dir));
                                         }
                                     }
+                                    if (!periodic_dir &&
+                                        ((iv_nb[dir] < dom_lo) ||
+                                         (iv_nb[dir] > dom_hi))) {
+                                        // Single cell across the domain
+                                        iv_nb = iv;
+                                    }
                                     // Interpolate to target location using
                                     // closest neighbor
                                     // (will do nothing if already at cell
@@ -399,12 +439,12 @@ void FPlaneAveraging<FType>::compute_averages(const IndexSelector& idxOp)
                                     for (int n = 0; n < num_comps; ++n) {
                                         const auto f_interp =
                                             fab_arr(iv, n) +
-                                            (fab_arr(iv_nb, n) -
-                                             fab_arr(iv, n)) *
-                                                ((x_targ - x_cell) /
-                                                 (x_nb - x_cell));
+                                            ((fab_arr(iv_nb, n) -
+                                              fab_arr(iv, n)) *
+                                             ((x_targ - x_cell) /
+                                              (x_nb - x_cell)));
                                         amrex::Gpu::deviceReduceSum(
-                                            &line_avg[num_comps * ind + n],
+                                            &line_avg[(num_comps * ind) + n],
                                             mask_arr(i, j, k) * f_interp * vol *
                                                 denom,
                                             handler);
@@ -440,8 +480,14 @@ FPlaneAveraging<FType>::line_derivative_of_average_cell(int ind, int comp) const
 {
     BL_PROFILE("kynema-sgf::PlaneAveraging::line_derivative_of_average_cell");
 
-    AMREX_ALWAYS_ASSERT(comp >= 0 && comp < m_ncomp);
-    AMREX_ALWAYS_ASSERT(ind >= 0 && ind < m_ncell_line);
+    AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+        comp >= 0 && comp < m_ncomp,
+        "comp = " + std::to_string(comp) +
+            ", m_ncomp = " + std::to_string(m_ncomp));
+    AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+        ind >= 0 && ind < m_ncell_line,
+        "ind = " + std::to_string(ind) +
+            ", m_ncell_line = " + std::to_string(m_ncell_line));
 
     amrex::Real dudx;
 
@@ -469,7 +515,10 @@ amrex::Real FPlaneAveraging<FType>::line_derivative_interpolated(
 {
     BL_PROFILE("kynema-sgf::PlaneAveraging::line_derivative_interpolated");
 
-    AMREX_ALWAYS_ASSERT(comp >= 0 && comp < m_ncomp);
+    AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+        comp >= 0 && comp < m_ncomp,
+        "comp = " + std::to_string(comp) +
+            ", m_ncomp = " + std::to_string(m_ncomp));
 
     int ind;
     amrex::Real c;
@@ -494,7 +543,6 @@ VelPlaneAveraging::VelPlaneAveraging(CFDSim& sim, int axis_in, int max_level)
     m_line_Su_average.resize(m_ncell_line, 0.0_rt);
     m_line_Sv_average.resize(m_ncell_line, 0.0_rt);
 }
-// NOLINTEND(clang-analyzer-security.ArrayBound)
 
 void VelPlaneAveraging::operator()()
 {
@@ -504,10 +552,9 @@ void VelPlaneAveraging::operator()()
     // velocity averages
     FieldPlaneAveraging::operator()();
 
-    std::fill(
-        m_line_hvelmag_average.begin(), m_line_hvelmag_average.end(), 0.0_rt);
-    std::fill(m_line_Su_average.begin(), m_line_Su_average.end(), 0.0_rt);
-    std::fill(m_line_Sv_average.begin(), m_line_Sv_average.end(), 0.0_rt);
+    std::ranges::fill(m_line_hvelmag_average, 0.0_rt);
+    std::ranges::fill(m_line_Su_average, 0.0_rt);
+    std::ranges::fill(m_line_Sv_average, 0.0_rt);
 
     switch (m_axis) {
     case 0:
@@ -613,7 +660,7 @@ void VelPlaneAveraging::compute_hvelmag_averages(const IndexSelector& idxOp)
 
                                 // cell coordinates
                                 const amrex::Real cell_xlo =
-                                    xlo + idxOp(i, j, k) * dx;
+                                    xlo + (idxOp(i, j, k) * dx);
                                 const amrex::Real cell_xhi = cell_xlo + dx;
 
                                 // line indices
@@ -640,7 +687,7 @@ void VelPlaneAveraging::compute_hvelmag_averages(const IndexSelector& idxOp)
 
                                     // line coordinates
                                     const amrex::Real line_xlo =
-                                        xlo + ind * line_dx;
+                                        xlo + (ind * line_dx);
                                     const amrex::Real line_xhi =
                                         line_xlo + line_dx;
 
@@ -659,10 +706,10 @@ void VelPlaneAveraging::compute_hvelmag_averages(const IndexSelector& idxOp)
                                         mask_arr(i, j, k) * deltax * dy * dz;
 
                                     const amrex::Real hvelmag = std::sqrt(
-                                        fab_arr(i, j, k, idxOp.odir1) *
-                                            fab_arr(i, j, k, idxOp.odir1) +
-                                        fab_arr(i, j, k, idxOp.odir2) *
-                                            fab_arr(i, j, k, idxOp.odir2));
+                                        (fab_arr(i, j, k, idxOp.odir1) *
+                                         fab_arr(i, j, k, idxOp.odir1)) +
+                                        (fab_arr(i, j, k, idxOp.odir2) *
+                                         fab_arr(i, j, k, idxOp.odir2)));
                                     const amrex::Real Su =
                                         hvelmag * fab_arr(i, j, k, idxOp.odir1);
                                     const amrex::Real Sv =
@@ -718,8 +765,8 @@ amrex::Real VelPlaneAveraging::line_su_average_interpolated(amrex::Real x) const
     amrex::Real c;
     convert_x_to_ind(x, ind, c);
 
-    return m_line_Su_average[ind] * (1.0_rt - c) +
-           m_line_Su_average[ind + 1] * c;
+    return (m_line_Su_average[ind] * (1.0_rt - c)) +
+           (m_line_Su_average[ind + 1] * c);
 }
 
 amrex::Real VelPlaneAveraging::line_sv_average_interpolated(amrex::Real x) const
@@ -729,8 +776,8 @@ amrex::Real VelPlaneAveraging::line_sv_average_interpolated(amrex::Real x) const
     amrex::Real c;
     convert_x_to_ind(x, ind, c);
 
-    return m_line_Sv_average[ind] * (1.0_rt - c) +
-           m_line_Sv_average[ind + 1] * c;
+    return (m_line_Sv_average[ind] * (1.0_rt - c)) +
+           (m_line_Sv_average[ind + 1] * c);
 }
 
 } // namespace kynema_sgf

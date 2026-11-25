@@ -56,12 +56,16 @@ but instead allows the user to specify variable names.
    containing files for each variable and plane. This format corresponds to the AMReX plotfile format, enabling direct 
    visualization through third-party tools like ParaView. The "netcdf" format outputs plane data in a single netcdf file.
 
-.. input_param:: BoundaryPlane.write_frequency
+.. input_param:: BoundaryPlane.write_interval
 
    **type:** Integer, optional, default = 1
 
-   Frequency (actually a time step interval) for writing BoundaryPlane data to file in write mode. This input parameter
-   is only relevant to write mode.
+   Number of time steps between writes of BoundaryPlane data in write mode.
+   The legacy input argument ``write_frequency`` is still accepted with a
+   warning; use ``write_interval`` instead. This input parameter is only
+   relevant to write mode. When using the legacy ``ABL.bndry_*`` input names,
+   use ``ABL.bndry_write_interval``; ``ABL.bndry_write_frequency`` is also
+   accepted with a warning.
 
 .. input_param:: BoundaryPlane.output_start_time
 
@@ -134,7 +138,8 @@ the gravitational constant when computing the wave speed.
    computed scaling factor exceeds this value, the externally specified profile is
    used instead of the rescaled interior profile. This limit prevents overly
    aggressive acceleration of the flow, which is most likely to occur during
-   startup or when the interior and exterior states differ substantially.
+   startup or when the interior and exterior states differ substantially. This parameter
+   also limits the scale applied to the exterior profile calculated by the Flather condition.
 
 .. input_param:: Flather.min_velocity_scale_factor
 
@@ -142,7 +147,10 @@ the gravitational constant when computing the wave speed.
 
    Lower bound on the factor used to rescale the interior velocity profile. If the
    computed scaling factor falls below this value, the externally specified profile
-   is used instead of the rescaled interior profile.
+   is used instead of the rescaled interior profile. This parameter
+   does not affect the scale applied to the exterior profile calculated by the Flather condition;
+   that minimum limit is 0, preventing the Flather condition from reversing the flow direction
+   dictated by the exterior velocity.
 
 **ModulatedPowerLaw**
 

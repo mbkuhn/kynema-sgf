@@ -21,8 +21,15 @@ struct Filter
     Filter(FTypeOut& filterphi, const FTypeIn& phi)
         : m_filterphi(filterphi), m_phi(phi)
     {
-        AMREX_ALWAYS_ASSERT(filterphi.num_comp() == phi.num_comp());
-        AMREX_ALWAYS_ASSERT(m_phi.num_grow() > amrex::IntVect(0));
+        AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+            filterphi.num_comp() == phi.num_comp(),
+            "filterphi.num_comp() = " + std::to_string(filterphi.num_comp()) +
+                ", phi.num_comp() = " + std::to_string(phi.num_comp()));
+        AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+            m_phi.num_grow() > amrex::IntVect(0),
+            "m_phi.num_grow() = (" + std::to_string(m_phi.num_grow()[0]) +
+                ", " + std::to_string(m_phi.num_grow()[1]) + ", " +
+                std::to_string(m_phi.num_grow()[2]) + ")");
     }
 
     template <typename Stencil>
@@ -47,17 +54,17 @@ struct Filter
                 auto const& filterphi_arr = out_arrs[nbx];
                 for (int icomp = 0; icomp < ncomp; icomp++) {
                     const amrex::Real filx =
-                        Stencil::f00 * phi_arr(i + 1, j, k, icomp) +
-                        Stencil::f01 * phi_arr(i, j, k, icomp) +
-                        Stencil::f02 * phi_arr(i - 1, j, k, icomp);
+                        (Stencil::f00 * phi_arr(i + 1, j, k, icomp)) +
+                        (Stencil::f01 * phi_arr(i, j, k, icomp)) +
+                        (Stencil::f02 * phi_arr(i - 1, j, k, icomp));
                     const amrex::Real fily =
-                        Stencil::f10 * phi_arr(i, j + 1, k, icomp) +
-                        Stencil::f11 * phi_arr(i, j, k, icomp) +
-                        Stencil::f12 * phi_arr(i, j - 1, k, icomp);
+                        (Stencil::f10 * phi_arr(i, j + 1, k, icomp)) +
+                        (Stencil::f11 * phi_arr(i, j, k, icomp)) +
+                        (Stencil::f12 * phi_arr(i, j - 1, k, icomp));
                     const amrex::Real filz =
-                        Stencil::f20 * phi_arr(i, j, k + 1, icomp) +
-                        Stencil::f21 * phi_arr(i, j, k, icomp) +
-                        Stencil::f22 * phi_arr(i, j, k - 1, icomp);
+                        (Stencil::f20 * phi_arr(i, j, k + 1, icomp)) +
+                        (Stencil::f21 * phi_arr(i, j, k, icomp)) +
+                        (Stencil::f22 * phi_arr(i, j, k - 1, icomp));
                     filterphi_arr(i, j, k, icomp) =
                         1.0_rt / 3.0_rt * (filx + fily + filz);
                 }

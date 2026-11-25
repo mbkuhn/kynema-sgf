@@ -18,8 +18,15 @@ struct Qcriterion
         FTypeOut& qcritphi, const FTypeIn& phi, const bool nondim = false)
         : m_qcritphi(qcritphi), m_phi(phi), m_nondim(nondim)
     {
-        AMREX_ALWAYS_ASSERT(AMREX_SPACEDIM == m_phi.num_comp());
-        AMREX_ALWAYS_ASSERT(m_phi.num_grow() > amrex::IntVect(0));
+        AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+            AMREX_SPACEDIM == m_phi.num_comp(),
+            "AMREX_SPACEDIM = " + std::to_string(AMREX_SPACEDIM) +
+                ", m_phi.num_comp() = " + std::to_string(m_phi.num_comp()));
+        AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+            m_phi.num_grow() > amrex::IntVect(0),
+            "m_phi.num_grow() = (" + std::to_string(m_phi.num_grow()[0]) +
+                ", " + std::to_string(m_phi.num_grow()[1]) + ", " +
+                std::to_string(m_phi.num_grow()[2]) + ")");
     }
 
     template <typename Stencil>
@@ -43,41 +50,41 @@ struct Qcriterion
                 }
                 auto const& phi = in_arrs[nbx];
                 auto const& qcritphi = out_arrs[nbx];
-                const amrex::Real ux = (Stencil::c00 * phi(i + 1, j, k, 0) +
-                                        Stencil::c01 * phi(i, j, k, 0) +
-                                        Stencil::c02 * phi(i - 1, j, k, 0)) *
+                const amrex::Real ux = ((Stencil::c00 * phi(i + 1, j, k, 0)) +
+                                        (Stencil::c01 * phi(i, j, k, 0)) +
+                                        (Stencil::c02 * phi(i - 1, j, k, 0))) *
                                        idx[0];
-                const amrex::Real vx = (Stencil::c00 * phi(i + 1, j, k, 1) +
-                                        Stencil::c01 * phi(i, j, k, 1) +
-                                        Stencil::c02 * phi(i - 1, j, k, 1)) *
+                const amrex::Real vx = ((Stencil::c00 * phi(i + 1, j, k, 1)) +
+                                        (Stencil::c01 * phi(i, j, k, 1)) +
+                                        (Stencil::c02 * phi(i - 1, j, k, 1))) *
                                        idx[0];
-                const amrex::Real wx = (Stencil::c00 * phi(i + 1, j, k, 2) +
-                                        Stencil::c01 * phi(i, j, k, 2) +
-                                        Stencil::c02 * phi(i - 1, j, k, 2)) *
+                const amrex::Real wx = ((Stencil::c00 * phi(i + 1, j, k, 2)) +
+                                        (Stencil::c01 * phi(i, j, k, 2)) +
+                                        (Stencil::c02 * phi(i - 1, j, k, 2))) *
                                        idx[0];
-                const amrex::Real uy = (Stencil::c10 * phi(i, j + 1, k, 0) +
-                                        Stencil::c11 * phi(i, j, k, 0) +
-                                        Stencil::c12 * phi(i, j - 1, k, 0)) *
+                const amrex::Real uy = ((Stencil::c10 * phi(i, j + 1, k, 0)) +
+                                        (Stencil::c11 * phi(i, j, k, 0)) +
+                                        (Stencil::c12 * phi(i, j - 1, k, 0))) *
                                        idx[1];
-                const amrex::Real vy = (Stencil::c10 * phi(i, j + 1, k, 1) +
-                                        Stencil::c11 * phi(i, j, k, 1) +
-                                        Stencil::c12 * phi(i, j - 1, k, 1)) *
+                const amrex::Real vy = ((Stencil::c10 * phi(i, j + 1, k, 1)) +
+                                        (Stencil::c11 * phi(i, j, k, 1)) +
+                                        (Stencil::c12 * phi(i, j - 1, k, 1))) *
                                        idx[1];
-                const amrex::Real wy = (Stencil::c10 * phi(i, j + 1, k, 2) +
-                                        Stencil::c11 * phi(i, j, k, 2) +
-                                        Stencil::c12 * phi(i, j - 1, k, 2)) *
+                const amrex::Real wy = ((Stencil::c10 * phi(i, j + 1, k, 2)) +
+                                        (Stencil::c11 * phi(i, j, k, 2)) +
+                                        (Stencil::c12 * phi(i, j - 1, k, 2))) *
                                        idx[1];
-                const amrex::Real uz = (Stencil::c20 * phi(i, j, k + 1, 0) +
-                                        Stencil::c21 * phi(i, j, k, 0) +
-                                        Stencil::c22 * phi(i, j, k - 1, 0)) *
+                const amrex::Real uz = ((Stencil::c20 * phi(i, j, k + 1, 0)) +
+                                        (Stencil::c21 * phi(i, j, k, 0)) +
+                                        (Stencil::c22 * phi(i, j, k - 1, 0))) *
                                        idx[2];
-                const amrex::Real vz = (Stencil::c20 * phi(i, j, k + 1, 1) +
-                                        Stencil::c21 * phi(i, j, k, 1) +
-                                        Stencil::c22 * phi(i, j, k - 1, 1)) *
+                const amrex::Real vz = ((Stencil::c20 * phi(i, j, k + 1, 1)) +
+                                        (Stencil::c21 * phi(i, j, k, 1)) +
+                                        (Stencil::c22 * phi(i, j, k - 1, 1))) *
                                        idx[2];
-                const amrex::Real wz = (Stencil::c20 * phi(i, j, k + 1, 2) +
-                                        Stencil::c21 * phi(i, j, k, 2) +
-                                        Stencil::c22 * phi(i, j, k - 1, 2)) *
+                const amrex::Real wz = ((Stencil::c20 * phi(i, j, k + 1, 2)) +
+                                        (Stencil::c21 * phi(i, j, k, 2)) +
+                                        (Stencil::c22 * phi(i, j, k - 1, 2))) *
                                        idx[2];
                 const amrex::Real S2 = utils::powi(ux, 2) + utils::powi(vy, 2) +
                                        utils::powi(wz, 2) +
@@ -90,10 +97,10 @@ struct Qcriterion
                 if (nondim) {
                     qcritphi(i, j, k) =
                         0.5_rt *
-                        (W2 / amrex::max<amrex::Real>(
-                                  std::numeric_limits<amrex::Real>::epsilon() *
-                                      1.0e2_rt,
-                                  S2) -
+                        ((W2 / amrex::max<amrex::Real>(
+                                   std::numeric_limits<amrex::Real>::epsilon() *
+                                       1.0e2_rt,
+                                   S2)) -
                          1.0_rt);
                 } else {
                     qcritphi(i, j, k) = 0.5_rt * (W2 - S2);

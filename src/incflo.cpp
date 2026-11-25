@@ -2,6 +2,7 @@
 #include "src/wind_energy/ABL.H"
 #include "src/utilities/tagging/RefinementCriteria.H"
 #include "src/equation_systems/PDEBase.H"
+#include "src/boundary_conditions/BCInterface.H"
 #include "src/turbulence/TurbulenceModel.H"
 #include "src/equation_systems/SchemeTraits.H"
 #include "src/utilities/IOManager.H"
@@ -158,6 +159,9 @@ void incflo::init_kynema_sgf_modules()
     for (auto& fb : m_sim.field_boundaries()) {
         fb->post_init_actions();
     }
+
+    kynema_sgf::BCIface::validate_inflow_values(
+        m_repo, m_sim.field_boundary_manager());
 
     icns().initialize();
     for (auto& eqn : scalar_eqns()) {
@@ -400,11 +404,17 @@ void incflo::Evolve()
                        << '\n';
     }
 
-    // Output at final time
-    if (m_time.write_last_plot_file()) {
+    if (m_time.stop_requested()) {
+        amrex::Print() << "Simulation stopped: " << m_time.stop_reason()
+                       << '\n';
+    }
+
+    // Output at final time. A requested stop leaves output behind even when
+    // no output interval was configured; see SimTime::write_final_plot_file()
+    if (m_time.write_final_plot_file()) {
         m_sim.io_manager().write_plot_file();
     }
-    if (m_time.write_last_checkpoint()) {
+    if (m_time.write_final_checkpoint()) {
         m_sim.io_manager().write_checkpoint_file();
     }
     m_sim.post_manager().final_output();
@@ -515,6 +525,10 @@ void incflo::init_physics_and_pde()
 
     // Post-processing actions that need to declare fields
     m_sim.post_manager().pre_init_actions();
+
+    kynema_sgf::BCIface::validate_inflow_values(
+        m_repo, m_sim.field_boundary_manager(),
+        kynema_sgf::InflowValidationStage::configuration);
 }
 
 void incflo::ErrorEst(

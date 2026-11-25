@@ -13,9 +13,18 @@ struct Laplacian
 {
     Laplacian(FTypeOut& lphi, const FTypeIn& phi) : m_lapphi(lphi), m_phi(phi)
     {
-        AMREX_ALWAYS_ASSERT(m_lapphi.num_comp() == 1);
-        AMREX_ALWAYS_ASSERT(m_phi.num_comp() == AMREX_SPACEDIM);
-        AMREX_ALWAYS_ASSERT(m_phi.num_grow() > amrex::IntVect(0));
+        AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+            m_lapphi.num_comp() == 1,
+            "m_lapphi.num_comp() = " + std::to_string(m_lapphi.num_comp()));
+        AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+            m_phi.num_comp() == AMREX_SPACEDIM,
+            "m_phi.num_comp() = " + std::to_string(m_phi.num_comp()) +
+                ", AMREX_SPACEDIM = " + std::to_string(AMREX_SPACEDIM));
+        AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+            m_phi.num_grow() > amrex::IntVect(0),
+            "m_phi.num_grow() = (" + std::to_string(m_phi.num_grow()[0]) +
+                ", " + std::to_string(m_phi.num_grow()[1]) + ", " +
+                std::to_string(m_phi.num_grow()[2]) + ")");
     }
 
     template <typename Stencil>
@@ -39,19 +48,19 @@ struct Laplacian
                 auto const& phi = in_arrs[nbx];
                 auto const& lapphi = out_arrs[nbx];
                 const amrex::Real d2phidx2 =
-                    (Stencil::s00 * phi(i + 1, j, k, 0) +
-                     Stencil::s01 * phi(i, j, k, 0) +
-                     Stencil::s02 * phi(i - 1, j, k, 0)) *
+                    ((Stencil::s00 * phi(i + 1, j, k, 0)) +
+                     (Stencil::s01 * phi(i, j, k, 0)) +
+                     (Stencil::s02 * phi(i - 1, j, k, 0))) *
                     idx[0] * idx[0];
                 const amrex::Real d2phidy2 =
-                    (Stencil::s10 * phi(i, j + 1, k, 1) +
-                     Stencil::s11 * phi(i, j, k, 1) +
-                     Stencil::s12 * phi(i, j - 1, k, 1)) *
+                    ((Stencil::s10 * phi(i, j + 1, k, 1)) +
+                     (Stencil::s11 * phi(i, j, k, 1)) +
+                     (Stencil::s12 * phi(i, j - 1, k, 1))) *
                     idx[1] * idx[1];
                 const amrex::Real d2phidz2 =
-                    (Stencil::s20 * phi(i, j, k + 1, 2) +
-                     Stencil::s21 * phi(i, j, k, 2) +
-                     Stencil::s22 * phi(i, j, k - 1, 2)) *
+                    ((Stencil::s20 * phi(i, j, k + 1, 2)) +
+                     (Stencil::s21 * phi(i, j, k, 2)) +
+                     (Stencil::s22 * phi(i, j, k - 1, 2))) *
                     idx[2] * idx[2];
                 lapphi(i, j, k) = d2phidx2 + d2phidy2 + d2phidz2;
             });
