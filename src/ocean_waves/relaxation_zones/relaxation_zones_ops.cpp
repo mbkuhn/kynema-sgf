@@ -338,9 +338,10 @@ void apply_relaxation_zones(CFDSim& sim, const RelaxZonesBaseData& wdata)
                     const auto allow_mod =
                         (dvf > 0.0_rt) ? (liq_cell_below && cell_has_gas)
                                        : (gas_cell_above && cell_has_liq);
+                    // Applied in every relaxation zone (inlet, outlet, y)
                     const auto prevent_mod =
-                        !allow_mod || disable_beach_vof_term;
-                    dvf = (in_beach && prevent_mod) ? 0.0_rt : dvf;
+                        !allow_mod || (in_beach && disable_beach_vof_term);
+                    dvf = prevent_mod ? 0.0_rt : dvf;
                     volfrac(i, j, k) += rampf * dvf;
                     // Liquid velocity forced only where velocity is known
                     //  - in most of domain, that is where target vof is nonzero
